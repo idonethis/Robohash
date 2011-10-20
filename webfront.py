@@ -213,7 +213,13 @@ class MainHandler(tornado.web.RequestHandler):
         self.write(self.render_string('templates/root.html',ip=ip,robo=random.choice(robo)))
 
 class ImgHandler(tornado.web.RequestHandler):
-    def get(self,string=None):
+    def get(self,string_and_args=None):
+        # HACK: cloudfront doesn't like query params. let's just parse it ourselves.
+        string, _, args = string_and_args.partition('/')
+        if args:
+            args = dict(urllib.unquote(arg).split('=', 1) for arg in args.split('/'))
+        else:
+            args = {}
         
         colors = ['blue','brown','green','grey','orange','pink','purple','red','white','yellow']
         sets = ['set1','set2','set3']
@@ -224,8 +230,8 @@ class ImgHandler(tornado.web.RequestHandler):
             string = self.request.remote_ip
         # string = urllib.quote_plus(string)
         
-        if "ignoreext" in self.request.arguments:
-            client_ignoreext = tornado.escape.xhtml_escape(self.get_argument("ignoreext"))
+        if "ignoreext" in args:
+            client_ignoreext = tornado.escape.xhtml_escape(args.get("ignoreext"))
         else:
             client_ignoreext = None
             
@@ -259,8 +265,8 @@ class ImgHandler(tornado.web.RequestHandler):
         sizey = 300
         
             
-        if "size" in self.request.arguments:
-            sizelist = self.get_argument("size").split(tornado.escape.xhtml_escape("x"),3)
+        if "size" in args:
+            sizelist = args.get("size").split(tornado.escape.xhtml_escape("x"),3)
             if ((int(sizelist[0]) > 0) and (int(sizelist[0]) < 4096)):
                 sizex = int(sizelist[0])
             if ((int(sizelist[0]) > 0) and (int(sizelist[0]) < 4096)):
@@ -268,13 +274,13 @@ class ImgHandler(tornado.web.RequestHandler):
             
             
             
-        if "gravatar" in self.request.arguments:    
-            if tornado.escape.xhtml_escape(self.get_argument("gravatar")) == 'yes':
+        if "gravatar" in args:
+            if tornado.escape.xhtml_escape(args.get("gravatar")) == 'yes':
                 default = "404"
                 # construct the url
                 gravatar_url = "http://www.gravatar.com/avatar.php?"
                 gravatar_url += urllib.urlencode({'gravatar_id':hashlib.md5(string.lower()).hexdigest(), 'default':default, 'size':str(sizey)})
-            if tornado.escape.xhtml_escape(self.get_argument("gravatar")) == 'hashed':
+            if tornado.escape.xhtml_escape(args.get("gravatar")) == 'hashed':
                 string = urllib.quote(string)
                 default = "404"
                 # construct the url
@@ -287,18 +293,18 @@ class ImgHandler(tornado.web.RequestHandler):
             except:
               badGravatar = True
   
-        if "set" in self.request.arguments:
-            if tornado.escape.xhtml_escape(self.get_argument("set")) == 'any':
+        if "set" in args:
+            if tornado.escape.xhtml_escape(args.get("set")) == 'any':
                 client_set = sets[r.hasharray[1] % len(sets) ]
-            if self.get_argument("set") in sets:
-                client_set =  tornado.escape.xhtml_escape(self.get_argument("set"))  
+            if args.get("set") in sets:
+                client_set =  tornado.escape.xhtml_escape(args.get("set"))  
         else:
             #If no set specified, you get set 1
             client_set = "set1"
         
         ##Let people define multiple sets, so I can add more.
-        if "sets" in self.request.arguments:
-            newsets = tornado.escape.xhtml_escape(self.get_argument("sets")).split(",");
+        if "sets" in args:
+            newsets = tornado.escape.xhtml_escape(args.get("sets")).split(",");
             replaceset = []
             for s in newsets:
                 if s in sets:
@@ -308,13 +314,13 @@ class ImgHandler(tornado.web.RequestHandler):
         if client_set == 'set1':
             client_set = colors[r.hasharray[0] % len(colors) ]    
             
-        if "color" in self.request.arguments:
-                if self.get_argument("color") in colors:
-                    client_set = tornado.escape.xhtml_escape(self.get_argument("color"))
+        if "color" in args:
+                if args.get("color") in colors:
+                    client_set = tornado.escape.xhtml_escape(args.get("color"))
                     
-        if "bgset" in self.request.arguments:
-            if self.get_argument("bgset") in bgsets:
-                client_bgset = tornado.escape.xhtml_escape(self.get_argument("bgset"))
+        if "bgset" in args:
+            if args.get("bgset") in bgsets:
+                client_bgset = tornado.escape.xhtml_escape(args.get("bgset"))
             else:
                 client_bgset = bgsets[r.hasharray[2] % len(bgsets) ]
             
